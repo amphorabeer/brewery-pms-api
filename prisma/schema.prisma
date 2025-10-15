@@ -1,0 +1,510 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ═══════════════════════════════════════════════════════════
+// ENUMS
+// ═══════════════════════════════════════════════════════════
+
+enum BatchStatus {
+  PLANNED
+  BREWING
+  FERMENTING
+  CONDITIONING
+  PACKAGING
+  FINISHED
+  CANCELLED
+}
+
+enum KegStatus {
+  EMPTY
+  FILLED
+  TAPPED
+  CLEANING
+  MAINTENANCE
+}
+
+// ═══════════════════════════════════════════════════════════
+// MODELS
+// ═══════════════════════════════════════════════════════════
+
+model Organization {
+  id          String   @id @default(uuid())
+  name        String
+  subdomain   String   @unique
+  logo        String?
+  status      String   @default("active")
+  trialEndsAt DateTime? @map("trial_ends_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  users          User[]
+  locations      Location[]
+  subscriptions  Subscription[]
+  invoices       Invoice[]
+  recipes        Recipe[]
+  batches        Batch[]
+  kegs           Keg[]
+  rooms          Room[]
+  reservations   Reservation[]
+  guests         Guest[]
+  products       Product[]
+  inventory      InventoryItem[]
+  auditLogs      AuditLog[]
+
+  @@map("organizations")
+}
+
+model User {
+  id            String   @id @default(uuid())
+  orgId         String   @map("org_id")
+  email         String   @unique
+  password      String
+  firstName     String?  @map("first_name")
+  lastName      String?  @map("last_name")
+  phone         String?
+  avatar        String?
+  role          String   @default("user")
+  status        String   @default("active")
+  lastLoginAt   DateTime? @map("last_login_at")
+  emailVerified Boolean  @default(false) @map("email_verified")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  organization       Organization        @relation(fields: [orgId], references: [id])
+  refreshTokens      RefreshToken[]
+  assignedTasks      HousekeepingTask[]
+  auditLogs          AuditLog[]
+  createdReservations Reservation[]      @relation("CreatedByUser")
+  batchStatusChanges BatchStatusHistory[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}
+
+model Plan {
+  id          String   @id @default(uuid())
+  name        String
+  priceGel    Decimal  @map("price_gel") @db.Decimal(10, 2)
+  priceUsd    Decimal? @map("price_usd") @db.Decimal(10, 2)
+  interval    String
+  maxUsers    Int      @map("max_users")
+  maxLocations Int     @map("max_locations")
+  features    Json
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  subscriptions Subscription[]
+
+  @@map("plans")
+}
+
+model Subscription {
+  id              String    @id @default(uuid())
+  orgId           String    @map("org_id")
+  planId          String    @map("plan_id")
+  status          String    @default("trialing")
+  currentPeriodStart DateTime @map("current_period_start")
+  currentPeriodEnd   DateTime @map("current_period_end")
+  cancelAtPeriodEnd  Boolean  @default(false) @map("cancel_at_period_end")
+  stripeCustomerId   String?  @map("stripe_customer_id")
+  stripeSubscriptionId String? @map("stripe_subscription_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  plan         Plan         @relation(fields: [planId], references: [id])
+  invoices     Invoice[]
+
+  @@map("subscriptions")
+}
+
+model Invoice {
+  id             String   @id @default(uuid())
+  orgId          String   @map("org_id")
+  subscriptionId String?  @map("subscription_id")
+  invoiceNumber  String   @unique @map("invoice_number")
+  amount         Decimal  @db.Decimal(10, 2)
+  currency       String   @default("GEL")
+  status         String   @default("draft")
+  dueDate        DateTime @map("due_date")
+  paidAt         DateTime? @map("paid_at")
+  stripeInvoiceId String? @map("stripe_invoice_id")
+  pdfUrl         String?  @map("pdf_url")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization Organization  @relation(fields: [orgId], references: [id])
+  subscription Subscription? @relation(fields: [subscriptionId], references: [id])
+  payments     Payment[]
+
+  @@map("invoices")
+}
+
+model Payment {
+  id              String   @id @default(uuid())
+  invoiceId       String   @map("invoice_id")
+  amount          Decimal  @db.Decimal(10, 2)
+  currency        String   @default("GEL")
+  method          String
+  status          String   @default("pending")
+  stripePaymentId String?  @map("stripe_payment_id")
+  receiptUrl      String?  @map("receipt_url")
+  paidAt          DateTime? @map("paid_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id])
+
+  @@map("payments")
+}
+
+model Location {
+  id        String   @id @default(uuid())
+  orgId     String   @map("org_id")
+  name      String
+  type      String
+  address   String?
+  city      String?
+  country   String?  @default("Georgia")
+  phone     String?
+  email     String?
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  organization Organization    @relation(fields: [orgId], references: [id])
+  batches      Batch[]
+  rooms        Room[]
+  inventory    InventoryItem[]
+
+  @@map("locations")
+}
+
+model Product {
+  id          String   @id @default(uuid())
+  orgId       String   @map("org_id")
+  name        String
+  sku         String   @unique
+  type        String
+  category    String?
+  unit        String   @default("unit")
+  costPrice   Decimal? @map("cost_price") @db.Decimal(10, 2)
+  sellPrice   Decimal? @map("sell_price") @db.Decimal(10, 2)
+  description String?
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  organization Organization    @relation(fields: [orgId], references: [id])
+  inventory    InventoryItem[]
+  recipeItems  RecipeItem[]
+
+  @@map("products")
+}
+
+model InventoryItem {
+  id           String   @id @default(uuid())
+  orgId        String   @map("org_id")
+  locationId   String   @map("location_id")
+  productId    String   @map("product_id")
+  quantity     Decimal  @db.Decimal(10, 3)
+  minStock     Decimal? @map("min_stock") @db.Decimal(10, 3)
+  lotNumber    String?  @map("lot_number")
+  expiresAt    DateTime? @map("expires_at")
+  lastCountAt  DateTime? @map("last_count_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  location     Location     @relation(fields: [locationId], references: [id])
+  product      Product      @relation(fields: [productId], references: [id])
+
+  @@unique([locationId, productId, lotNumber])
+  @@map("inventory_items")
+}
+
+model Recipe {
+  id          String   @id @default(uuid())
+  orgId       String   @map("org_id")
+  name        String
+  style       String
+  batchSize   Decimal  @map("batch_size") @db.Decimal(10, 2)
+  abv         Decimal? @db.Decimal(5, 2)
+  ibu         Decimal? @db.Decimal(5, 1)
+  og          Decimal? @db.Decimal(4, 3)
+  fg          Decimal? @db.Decimal(4, 3)
+  mashTemp    Decimal? @map("mash_temp") @db.Decimal(5, 2)
+  mashTime    Int?     @map("mash_time")
+  boilTime    Int?     @map("boil_time")
+  fermentTemp Decimal? @map("ferment_temp") @db.Decimal(5, 2)
+  fermentDays Int?     @map("ferment_days")
+  notes       String?
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  items        RecipeItem[]
+  batches      Batch[]
+
+  @@map("recipes")
+}
+
+model RecipeItem {
+  id        String   @id @default(uuid())
+  recipeId  String   @map("recipe_id")
+  productId String   @map("product_id")
+  quantity  Decimal  @db.Decimal(10, 3)
+  unit      String
+  timing    String?
+  notes     String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  recipe  Recipe  @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+
+  @@map("recipe_items")
+}
+
+model Batch {
+  id                    String      @id @default(uuid())
+  orgId                 String      @map("org_id")
+  locationId            String      @map("location_id")
+  recipeId              String      @map("recipe_id")
+  batchNumber           String      @unique @map("batch_number")
+  status                BatchStatus @default(PLANNED)
+  brewDate              DateTime    @map("brew_date")
+  expectedVolume        Decimal     @map("expected_volume") @db.Decimal(10, 2)
+  actualVolume          Decimal?    @map("actual_volume") @db.Decimal(10, 2)
+  og                    Decimal?    @db.Decimal(4, 3)
+  fg                    Decimal?    @db.Decimal(4, 3)
+  abv                   Decimal?    @db.Decimal(5, 2)
+  fermentationStartDate DateTime?   @map("fermentation_start_date")
+  fermentationEndDate   DateTime?   @map("fermentation_end_date")
+  packagedDate          DateTime?   @map("packaged_date")
+  finishedDate          DateTime?   @map("finished_date")
+  notes                 String?
+  createdAt             DateTime    @default(now()) @map("created_at")
+  updatedAt             DateTime    @updatedAt @map("updated_at")
+
+  organization    Organization         @relation(fields: [orgId], references: [id])
+  location        Location             @relation(fields: [locationId], references: [id])
+  recipe          Recipe               @relation(fields: [recipeId], references: [id])
+  fermentationLogs FermentationLog[]
+  kegs            Keg[]
+  statusHistory   BatchStatusHistory[]
+
+  @@map("batches")
+}
+
+model BatchStatusHistory {
+  id         String      @id @default(uuid())
+  batchId    String      @map("batch_id")
+  fromStatus BatchStatus? @map("from_status")
+  toStatus   BatchStatus @map("to_status")
+  changedBy  String      @map("changed_by")
+  notes      String?
+  changedAt  DateTime    @default(now()) @map("changed_at")
+
+  batch     Batch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  user      User  @relation(fields: [changedBy], references: [id])
+
+  @@index([batchId])
+  @@map("batch_status_history")
+}
+
+model FermentationLog {
+  id          String   @id @default(uuid())
+  batchId     String   @map("batch_id")
+  measuredAt  DateTime @map("measured_at")
+  temperature Decimal  @db.Decimal(5, 2)
+  gravity     Decimal? @db.Decimal(4, 3)
+  ph          Decimal? @db.Decimal(4, 2)
+  pressure    Decimal? @db.Decimal(5, 2)
+  notes       String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  batch Batch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  @@map("fermentation_logs")
+}
+
+model Keg {
+  id           String    @id @default(uuid())
+  orgId        String    @map("org_id")
+  batchId      String?   @map("batch_id")
+  kegNumber    String    @unique @map("keg_number")
+  size         Decimal   @db.Decimal(5, 1)
+  status       KegStatus @default(EMPTY)
+  filledAt     DateTime? @map("filled_at")
+  tappedAt     DateTime? @map("tapped_at")
+  emptyAt      DateTime? @map("empty_at")
+  currentVolume Decimal? @map("current_volume") @db.Decimal(5, 2)
+  location     String?
+  notes        String?
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  batch        Batch?       @relation(fields: [batchId], references: [id])
+
+  @@map("kegs")
+}
+
+model Room {
+  id          String   @id @default(uuid())
+  orgId       String   @map("org_id")
+  locationId  String   @map("location_id")
+  roomNumber  String   @map("room_number")
+  roomType    String   @map("room_type")
+  floor       Int?
+  capacity    Int      @default(2)
+  baseRate    Decimal  @map("base_rate") @db.Decimal(10, 2)
+  status      String   @default("available")
+  amenities   Json?
+  description String?
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  organization     Organization       @relation(fields: [orgId], references: [id])
+  location         Location           @relation(fields: [locationId], references: [id])
+  reservations     Reservation[]
+  housekeepingTasks HousekeepingTask[]
+
+  @@unique([orgId, roomNumber])
+  @@map("rooms")
+}
+
+model Guest {
+  id             String   @id @default(uuid())
+  orgId          String   @map("org_id")
+  firstName      String   @map("first_name")
+  lastName       String   @map("last_name")
+  email          String?
+  phone          String?
+  passportNumber String?  @map("passport_number")
+  idNumber       String?  @map("id_number")
+  nationality    String?
+  dateOfBirth    DateTime? @map("date_of_birth")
+  address        String?
+  city           String?
+  country        String?
+  vipStatus      Boolean  @default(false) @map("vip_status")
+  notes          String?
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization Organization  @relation(fields: [orgId], references: [id])
+  reservations Reservation[]
+
+  @@map("guests")
+}
+
+model Reservation {
+  id           String    @id @default(uuid())
+  orgId        String    @map("org_id")
+  roomId       String    @map("room_id")
+  guestId      String    @map("guest_id")
+  confirmationNumber String @unique @map("confirmation_number")
+  checkIn      DateTime  @map("check_in")
+  checkOut     DateTime  @map("check_out")
+  adults       Int       @default(1)
+  children     Int       @default(0)
+  status       String    @default("pending")
+  channel      String    @default("direct")
+  totalAmount  Decimal   @map("total_amount") @db.Decimal(10, 2)
+  paidAmount   Decimal   @default(0) @map("paid_amount") @db.Decimal(10, 2)
+  balance      Decimal   @default(0) @db.Decimal(10, 2)
+  specialRequests String? @map("special_requests")
+  notes        String?
+  checkedInAt  DateTime? @map("checked_in_at")
+  checkedOutAt DateTime? @map("checked_out_at")
+  createdById  String    @map("created_by_id")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  room         Room         @relation(fields: [roomId], references: [id])
+  guest        Guest        @relation(fields: [guestId], references: [id])
+  createdBy    User         @relation("CreatedByUser", fields: [createdById], references: [id])
+  folioItems   FolioItem[]
+
+  @@map("reservations")
+}
+
+model FolioItem {
+  id            String    @id @default(uuid())
+  reservationId String    @map("reservation_id")
+  type          String
+  description   String
+  quantity      Decimal   @default(1) @db.Decimal(10, 2)
+  unitPrice     Decimal   @map("unit_price") @db.Decimal(10, 2)
+  totalAmount   Decimal   @map("total_amount") @db.Decimal(10, 2)
+  isPaid        Boolean   @default(false) @map("is_paid")
+  paidAt        DateTime? @map("paid_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  reservation Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+
+  @@map("folio_items")
+}
+
+model HousekeepingTask {
+  id          String    @id @default(uuid())
+  roomId      String    @map("room_id")
+  assignedTo  String?   @map("assigned_to")
+  taskType    String    @map("task_type")
+  priority    String    @default("normal")
+  status      String    @default("pending")
+  scheduledAt DateTime  @map("scheduled_at")
+  startedAt   DateTime? @map("started_at")
+  completedAt DateTime? @map("completed_at")
+  notes       String?
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  room       Room  @relation(fields: [roomId], references: [id])
+  assignedUser User? @relation(fields: [assignedTo], references: [id])
+
+  @@map("housekeeping_tasks")
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  orgId     String   @map("org_id")
+  userId    String?  @map("user_id")
+  action    String
+  entity    String
+  entityId  String?  @map("entity_id")
+  changes   Json?
+  ipAddress String?  @map("ip_address")
+  userAgent String?  @map("user_agent")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  user         User?        @relation(fields: [userId], references: [id])
+
+  @@index([orgId, createdAt])
+  @@index([userId])
+  @@index([entity, entityId])
+  @@map("audit_logs")
+}
