@@ -56,6 +56,7 @@ model Organization {
   products       Product[]
   inventory      InventoryItem[]
   auditLogs      AuditLog[]
+  ingredients    Ingredient[]
 
   @@map("organizations")
 }
@@ -261,9 +262,10 @@ model Recipe {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  organization Organization @relation(fields: [orgId], references: [id])
+  organization Organization       @relation(fields: [orgId], references: [id])
   items        RecipeItem[]
   batches      Batch[]
+  ingredients  RecipeIngredient[]
 
   @@map("recipes")
 }
@@ -507,4 +509,40 @@ model AuditLog {
   @@index([userId])
   @@index([entity, entityId])
   @@map("audit_logs")
+}
+
+model Ingredient {
+  id          String   @id @default(uuid())
+  orgId       String   @map("org_id")
+  name        String
+  type        String
+  supplier    String?
+  costPerUnit Decimal? @map("cost_per_unit") @db.Decimal(10, 2)
+  unit        String   @default("kg")
+  stock       Decimal? @db.Decimal(10, 3)
+  notes       String?
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  organization      Organization       @relation(fields: [orgId], references: [id])
+  recipeIngredients RecipeIngredient[]
+
+  @@map("ingredients")
+}
+
+model RecipeIngredient {
+  id           String   @id @default(uuid())
+  recipeId     String   @map("recipe_id")
+  ingredientId String   @map("ingredient_id")
+  quantity     Decimal  @db.Decimal(10, 3)
+  unit         String
+  timing       String?
+  notes        String?
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  recipe     Recipe     @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  ingredient Ingredient @relation(fields: [ingredientId], references: [id])
+
+  @@map("recipe_ingredients")
 }
