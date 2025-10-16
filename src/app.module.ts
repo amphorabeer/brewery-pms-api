@@ -4,8 +4,9 @@ import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { RecipesModule } from './recipes/recipes.module';
 import { BatchesModule } from './batches/batches.module';
+import { LocationsModule } from './locations/locations.module';
+import { IngredientsModule } from './ingredients/ingredients.module';
 import { AppController } from './app.controller';
-import { LocationsModule } from './locations/locations.module';  // ← Fix this path
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { LocationsModule } from './locations/locations.module';  // ← Fix this
     RecipesModule,
     BatchesModule,
     LocationsModule,
+    IngredientsModule,
   ],
   controllers: [AppController],
 })
