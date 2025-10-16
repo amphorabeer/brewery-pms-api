@@ -14,6 +14,9 @@ async function bootstrap() {
 
   // Validation
   app.useGlobalPipes(
+nano src/main.ts
+
+
     new ValidationPipe({
       whitelist: true,
       transform: true,
