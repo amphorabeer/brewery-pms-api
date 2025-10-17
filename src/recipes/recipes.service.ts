@@ -6,6 +6,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateRecipeDto } from './dto/create-recipe.dto';
 import { UpdateRecipeDto } from './dto/update-recipe.dto';
+import { AddIngredientToRecipeDto } from './dto/add-ingredient.dto';
 
 @Injectable()
 export class RecipesService {
@@ -60,6 +61,11 @@ export class RecipesService {
     const recipe = await this.prisma.recipe.findUnique({
       where: { id },
       include: {
+        ingredients: {
+          include: {
+            ingredient: true,
+          },
+        },
         items: {
           include: {
             product: true,
@@ -177,5 +183,64 @@ export class RecipesService {
     });
 
     return recipes;
+  }
+
+  // Recipe Ingredients Management
+  async addIngredient(
+    recipeId: string,
+    orgId: string,
+    dto: AddIngredientToRecipeDto,
+  ) {
+    const recipe = await this.prisma.recipe.findUnique({
+      where: { id: recipeId },
+    });
+
+    if (!recipe || recipe.orgId !== orgId) {
+      throw new NotFoundException('Recipe not found');
+    }
+
+    const ingredient = await this.prisma.ingredient.findUnique({
+      where: { id: dto.ingredientId },
+    });
+
+    if (!ingredient || ingredient.orgId !== orgId) {
+      throw new NotFoundException('Ingredient not found');
+    }
+
+    const recipeIngredient = await this.prisma.recipeIngredient.create({
+      data: {
+        recipeId,
+        ingredientId: dto.ingredientId,
+        quantity: dto.quantity,
+        unit: dto.unit,
+        timing: dto.timing,
+        notes: dto.notes,
+      },
+      include: {
+        ingredient: true,
+      },
+    });
+
+    return recipeIngredient;
+  }
+
+  async removeIngredient(
+    recipeIngredientId: string,
+    recipeId: string,
+    orgId: string,
+  ) {
+    const recipe = await this.prisma.recipe.findUnique({
+      where: { id: recipeId },
+    });
+
+    if (!recipe || recipe.orgId !== orgId) {
+      throw new NotFoundException('Recipe not found');
+    }
+
+    await this.prisma.recipeIngredient.delete({
+      where: { id: recipeIngredientId },
+    });
+
+    return { message: 'Ingredient removed from recipe' };
   }
 }

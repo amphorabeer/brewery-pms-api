@@ -512,21 +512,21 @@ model AuditLog {
 }
 
 model Ingredient {
-  id          String   @id @default(uuid())
-  orgId       String   @map("org_id")
-  name        String
-  type        String
-  supplier    String?
-  costPerUnit Decimal? @map("cost_per_unit") @db.Decimal(10, 2)
-  unit        String   @default("kg")
-  stock       Decimal? @db.Decimal(10, 3)
-  notes       String?
-  isActive    Boolean  @default(true) @map("is_active")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id            String    @id @default(uuid())
+  orgId         String    @map("org_id")
+  name          String
+  type          String
+  supplier      String?
+  costPerUnit   Decimal?  @map("cost_per_unit") @db.Decimal(10, 2)
+  unit          String    @default("kg")
+  stock         Decimal?  @db.Decimal(10, 3)
+  notes         String?
+  isActive      Boolean   @default(true) @map("is_active")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
 
-  organization      Organization       @relation(fields: [orgId], references: [id])
-  recipeIngredients RecipeIngredient[]
+  organization  Organization @relation(fields: [orgId], references: [id])
+  recipeIngredients RecipeIngredient[]  // ← ეს ხაზი დაამატე!
 
   @@map("ingredients")
 }
@@ -541,8 +541,8 @@ model RecipeIngredient {
   notes        String?
   createdAt    DateTime @default(now()) @map("created_at")
 
-  recipe     Recipe     @relation(fields: [recipeId], references: [id], onDelete: Cascade)
-  ingredient Ingredient @relation(fields: [ingredientId], references: [id])
+  recipe       Recipe     @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id])
 
   @@map("recipe_ingredients")
 }
