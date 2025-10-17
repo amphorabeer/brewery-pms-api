@@ -7,6 +7,7 @@ import { BatchesModule } from './batches/batches.module';
 import { LocationsModule } from './locations/locations.module';
 import { IngredientsModule } from './ingredients/ingredients.module';
 import { AppController } from './app.controller';
+import { TanksModule } from './tanks/tanks.module';
 
 @Module({
   imports: [
@@ -19,6 +20,8 @@ import { AppController } from './app.controller';
     BatchesModule,
     LocationsModule,
     IngredientsModule,
+    TanksModule, 
+
   ],
   controllers: [AppController],
 })

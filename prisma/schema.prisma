@@ -57,6 +57,7 @@ model Organization {
   inventory      InventoryItem[]
   auditLogs      AuditLog[]
   ingredients    Ingredient[]
+  tanks          Tank[]
 
   @@map("organizations")
 }
@@ -291,6 +292,7 @@ model Batch {
   orgId                 String      @map("org_id")
   locationId            String      @map("location_id")
   recipeId              String      @map("recipe_id")
+  tankId                String?     @map("tank_id")
   batchNumber           String      @unique @map("batch_number")
   status                BatchStatus @default(PLANNED)
   brewDate              DateTime    @map("brew_date")
@@ -307,12 +309,13 @@ model Batch {
   createdAt             DateTime    @default(now()) @map("created_at")
   updatedAt             DateTime    @updatedAt @map("updated_at")
 
-  organization    Organization         @relation(fields: [orgId], references: [id])
-  location        Location             @relation(fields: [locationId], references: [id])
-  recipe          Recipe               @relation(fields: [recipeId], references: [id])
+  organization     Organization         @relation(fields: [orgId], references: [id])
+  location         Location             @relation(fields: [locationId], references: [id])
+  recipe           Recipe               @relation(fields: [recipeId], references: [id])
+  tank             Tank?                @relation("TankBatches", fields: [tankId], references: [id])
   fermentationLogs FermentationLog[]
-  kegs            Keg[]
-  statusHistory   BatchStatusHistory[]
+  kegs             Keg[]
+  statusHistory    BatchStatusHistory[]
 
   @@map("batches")
 }
@@ -525,8 +528,8 @@ model Ingredient {
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
-  organization  Organization @relation(fields: [orgId], references: [id])
-  recipeIngredients RecipeIngredient[]  // ← ეს ხაზი დაამატე!
+  organization      Organization      @relation(fields: [orgId], references: [id])
+  recipeIngredients RecipeIngredient[]
 
   @@map("ingredients")
 }
@@ -545,4 +548,24 @@ model RecipeIngredient {
   ingredient   Ingredient @relation(fields: [ingredientId], references: [id])
 
   @@map("recipe_ingredients")
+}
+
+model Tank {
+  id             String   @id @default(uuid())
+  name           String
+  type           String
+  capacity       Float
+  status         String   @default("EMPTY")
+  location       String?
+  notes          String?
+  
+  organizationId String   @map("organization_id")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  
+  batches        Batch[]  @relation("TankBatches")
+  
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@map("tanks")
 }
