@@ -13,6 +13,7 @@ import {
 import { BatchesService } from './batches.service';
 import { CreateBatchDto } from './dto/create-batch.dto';
 import { UpdateBatchDto } from './dto/update-batch.dto';
+import { CreateFermentationLogDto } from './dto/create-fermentation-log.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { BatchStatus } from '@prisma/client';
@@ -65,23 +66,41 @@ export class BatchesController {
     return this.batchesService.remove(id, req.user.orgId);
   }
 
+  // ============================================
+  // 🔬 FERMENTATION LOGS ENDPOINTS (FIXED!)
+  // ============================================
+
   @Post(':id/fermentation-logs')
   @ApiOperation({ summary: 'Add fermentation log to batch' })
-  addFermentationLog(
+  createFermentationLog(
     @Request() req,
-    @Param('id') id: string,
-    @Body() createLogDto: any,
+    @Param('id') batchId: string,
+    @Body() createLogDto: CreateFermentationLogDto,
   ) {
-    // This functionality needs to be moved to fermentation-logs module
-    // For now, return not implemented
-    return { message: 'Use /fermentation-logs endpoint instead' };
+    return this.batchesService.createFermentationLog(
+      batchId,
+      req.user.orgId,
+      createLogDto,
+    );
   }
 
   @Get(':id/fermentation-logs')
   @ApiOperation({ summary: 'Get fermentation logs for batch' })
-  getFermentationLogs(@Request() req, @Param('id') id: string) {
-    // This functionality needs to be moved to fermentation-logs module
-    // For now, return empty array
-    return [];
+  getFermentationLogs(@Request() req, @Param('id') batchId: string) {
+    return this.batchesService.getFermentationLogs(batchId, req.user.orgId);
+  }
+
+  @Delete(':id/fermentation-logs/:logId')
+  @ApiOperation({ summary: 'Delete fermentation log' })
+  deleteFermentationLog(
+    @Request() req,
+    @Param('id') batchId: string,
+    @Param('logId') logId: string,
+  ) {
+    return this.batchesService.deleteFermentationLog(
+      logId,
+      batchId,
+      req.user.orgId,
+    );
   }
 }
