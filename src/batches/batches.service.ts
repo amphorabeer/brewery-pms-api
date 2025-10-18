@@ -33,16 +33,32 @@ export class BatchesService {
       throw new NotFoundException('Recipe not found');
     }
 
-    // Verify location exists and belongs to organization
-    const location = await this.prisma.location.findFirst({
-      where: {
-        id: createBatchDto.locationId,
-        orgId,
-      },
-    });
+    // Verify location if provided
+    if (createBatchDto.locationId) {
+      const location = await this.prisma.location.findFirst({
+        where: {
+          id: createBatchDto.locationId,
+          orgId,
+        },
+      });
 
-    if (!location) {
-      throw new NotFoundException('Location not found');
+      if (!location) {
+        throw new NotFoundException('Location not found');
+      }
+    }
+
+    // Verify tank if provided
+    if (createBatchDto.tankId) {
+      const tank = await this.prisma.tank.findFirst({
+        where: {
+          id: createBatchDto.tankId,
+          organizationId: orgId,
+        },
+      });
+
+      if (!tank) {
+        throw new NotFoundException('Tank not found');
+      }
     }
 
     // Generate batch number
@@ -56,6 +72,7 @@ export class BatchesService {
       data: {
         recipeId: createBatchDto.recipeId,
         locationId: createBatchDto.locationId,
+        tankId: createBatchDto.tankId,
         expectedVolume: createBatchDto.expectedVolume,
         notes: createBatchDto.notes,
         brewDate,
@@ -78,6 +95,14 @@ export class BatchesService {
             id: true,
             name: true,
             type: true,
+          },
+        },
+        tank: {
+          select: {
+            id: true,
+            name: true,
+            type: true,
+            capacity: true,
           },
         },
       },
@@ -109,6 +134,12 @@ export class BatchesService {
             name: true,
           },
         },
+        tank: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -132,6 +163,15 @@ export class BatchesService {
           select: {
             id: true,
             name: true,
+          },
+        },
+        tank: {
+          select: {
+            id: true,
+            name: true,
+            type: true,
+            capacity: true,
+            status: true,
           },
         },
         fermentationLogs: {
@@ -209,6 +249,12 @@ export class BatchesService {
           },
         },
         location: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        tank: {
           select: {
             id: true,
             name: true,
