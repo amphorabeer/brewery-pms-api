@@ -381,4 +381,49 @@ export class BatchesService {
       );
     }
   }
+  async createFermentationLog(batchId: string, orgId: string, createLogDto: any) {
+    const batch = await this.findOne(batchId, orgId);
+  
+    const log = await this.prisma.fermentationLog.create({
+      data: {
+        batchId,
+        measuredAt: createLogDto.measuredAt ? new Date(createLogDto.measuredAt) : new Date(),
+        temperature: createLogDto.temperature,
+        gravity: createLogDto.gravity,
+        ph: createLogDto.ph,
+        pressure: createLogDto.pressure,
+        notes: createLogDto.notes,
+      },
+    });
+  
+    return log;
+  }
+  
+  async getFermentationLogs(batchId: string, orgId: string) {
+    await this.findOne(batchId, orgId);
+  
+    return this.prisma.fermentationLog.findMany({
+      where: { batchId },
+      orderBy: { measuredAt: 'asc' },
+    });
+  }
+  
+  async deleteFermentationLog(logId: string, batchId: string, orgId: string) {
+    await this.findOne(batchId, orgId);
+  
+    const log = await this.prisma.fermentationLog.findFirst({
+      where: {
+        id: logId,
+        batchId,
+      },
+    });
+  
+    if (!log) {
+      throw new NotFoundException('Fermentation log not found');
+    }
+  
+    return this.prisma.fermentationLog.delete({
+      where: { id: logId },
+    });
+  }
 }
