@@ -290,7 +290,7 @@ model RecipeItem {
 model Batch {
   id                    String      @id @default(uuid())
   orgId                 String      @map("org_id")
-  locationId            String      @map("location_id")
+  locationId            String?     @map("location_id")  // ← დაემატა ?
   recipeId              String      @map("recipe_id")
   tankId                String?     @map("tank_id")
   batchNumber           String      @unique @map("batch_number")
@@ -310,7 +310,7 @@ model Batch {
   updatedAt             DateTime    @updatedAt @map("updated_at")
 
   organization     Organization         @relation(fields: [orgId], references: [id])
-  location         Location             @relation(fields: [locationId], references: [id])
+  location         Location?            @relation(fields: [locationId], references: [id])  // ← დაემატა ?
   recipe           Recipe               @relation(fields: [recipeId], references: [id])
   tank             Tank?                @relation("TankBatches", fields: [tankId], references: [id])
   fermentationLogs FermentationLog[]
