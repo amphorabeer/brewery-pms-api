@@ -15,12 +15,21 @@ export class CreateBatchDto {
   @IsUUID()
   recipeId: string;
 
-  @ApiProperty({ 
+  @ApiPropertyOptional({ 
     example: 'a1234567-89ab-cdef-0123-456789abcdef',
-    description: 'Location ID'
+    description: 'Location ID (Optional)'
   })
+  @IsOptional()
   @IsUUID()
-  locationId: string;
+  locationId?: string;
+
+  @ApiPropertyOptional({ 
+    example: 'c3456789-0abc-def1-2345-6789abcdef01',
+    description: 'Tank ID (Optional)'
+  })
+  @IsOptional()
+  @IsUUID()
+  tankId?: string;
 
   @ApiProperty({ 
     example: 100,
