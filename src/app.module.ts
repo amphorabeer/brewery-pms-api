@@ -8,7 +8,7 @@ import { LocationsModule } from './locations/locations.module';
 import { IngredientsModule } from './ingredients/ingredients.module';
 import { AppController } from './app.controller';
 import { TanksModule } from './tanks/tanks.module';
-
+import { QcModule } from './qc/qc.module'; 
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -19,6 +19,7 @@ import { TanksModule } from './tanks/tanks.module';
     RecipesModule,
     BatchesModule,
     LocationsModule,
+    QcModule,  // ← ADD THIS
     IngredientsModule,
     TanksModule, 
 
