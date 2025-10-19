@@ -52,6 +52,23 @@ enum PackagingStatus {
   CANCELLED
 }
 
+enum MovementType {
+  IN
+  OUT
+  ADJUSTMENT
+  BREWING
+  SPOILAGE
+  TRANSFER
+}
+
+enum PurchaseOrderStatus {
+  DRAFT
+  SENT
+  PARTIALLY_RECEIVED
+  RECEIVED
+  CANCELLED
+}
+
 // ═══════════════════════════════════════════════════════════
 // MODELS
 // ═══════════════════════════════════════════════════════════
@@ -83,6 +100,9 @@ model Organization {
   tanks              Tank[]
   qcTestTypes        QcTestType[]
   packageFormats     PackageFormat[]
+  suppliers          Supplier[]
+  stockMovements     StockMovement[]
+  purchaseOrders     PurchaseOrder[]
 
   @@map("organizations")
 }
@@ -111,6 +131,8 @@ model User {
   batchStatusChanges   BatchStatusHistory[]
   qcTests              QcTest[]
   packagingOperations  PackagingOperation[]
+  stockMovements       StockMovement[]
+  purchaseOrders       PurchaseOrder[]
 
   @@map("users")
 }
@@ -223,6 +245,7 @@ model Location {
   batches      Batch[]
   rooms        Room[]
   inventory    InventoryItem[]
+  stockMovements StockMovement[]
 
   @@map("locations")
 }
@@ -345,6 +368,7 @@ model Batch {
   statusHistory       BatchStatusHistory[]
   qcTests             QcTest[]
   packagingOperations PackagingOperation[]
+  stockMovements      StockMovement[]
 
   @@map("batches")
 }
@@ -557,8 +581,10 @@ model Ingredient {
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
-  organization      Organization      @relation(fields: [orgId], references: [id])
-  recipeIngredients RecipeIngredient[]
+  organization       Organization        @relation(fields: [orgId], references: [id])
+  recipeIngredients  RecipeIngredient[]
+  stockMovements     StockMovement[]
+  purchaseOrderItems PurchaseOrderItem[]
 
   @@map("ingredients")
 }
@@ -642,10 +668,10 @@ model QcTest {
 model PackageFormat {
   id          String      @id @default(uuid())
   orgId       String      @map("org_id")
-  name        String      // e.g., "330ml Bottle", "50L Keg"
+  name        String
   type        PackageType
-  size        Decimal     @db.Decimal(10, 2) // Size in liters or ml
-  unit        String      // "ml", "L"
+  size        Decimal     @db.Decimal(10, 2)
+  unit        String
   description String?
   isActive    Boolean     @default(true) @map("is_active")
   createdAt   DateTime    @default(now()) @map("created_at")
@@ -661,10 +687,10 @@ model PackagingOperation {
   id              String          @id @default(uuid())
   batchId         String          @map("batch_id")
   packageFormatId String          @map("package_format_id")
-  sku             String?         // Auto-generated SKU
-  quantity        Int             // Number of packages
-  volumePackaged  Decimal         @map("volume_packaged") @db.Decimal(10, 2) // Total volume in liters
-  packagedBy      String          @map("packaged_by") // User who performed operation
+  sku             String?
+  quantity        Int
+  volumePackaged  Decimal         @map("volume_packaged") @db.Decimal(10, 2)
+  packagedBy      String          @map("packaged_by")
   packagedAt      DateTime        @map("packaged_at")
   status          PackagingStatus @default(COMPLETED)
   notes           String?
@@ -677,4 +703,95 @@ model PackagingOperation {
 
   @@index([batchId])
   @@map("packaging_operations")
+}
+
+model Supplier {
+  id             String   @id @default(uuid())
+  orgId          String   @map("org_id")
+  name           String
+  contactPerson  String?  @map("contact_person")
+  email          String?
+  phone          String?
+  address        String?
+  city           String?
+  country        String?  @default("Georgia")
+  taxId          String?  @map("tax_id")
+  paymentTerms   String?  @map("payment_terms")
+  notes          String?
+  isActive       Boolean  @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization   Organization    @relation(fields: [orgId], references: [id])
+  purchaseOrders PurchaseOrder[]
+
+  @@map("suppliers")
+}
+
+model StockMovement {
+  id             String       @id @default(uuid())
+  orgId          String       @map("org_id")
+  ingredientId   String       @map("ingredient_id")
+  locationId     String?      @map("location_id")
+  batchId        String?      @map("batch_id")
+  type           MovementType
+  quantity       Decimal      @db.Decimal(10, 3)
+  unit           String
+  reason         String?
+  reference      String?
+  movedBy        String       @map("moved_by")
+  movedAt        DateTime     @map("moved_at")
+  createdAt      DateTime     @default(now()) @map("created_at")
+
+  organization   Organization @relation(fields: [orgId], references: [id])
+  ingredient     Ingredient   @relation(fields: [ingredientId], references: [id])
+  location       Location?    @relation(fields: [locationId], references: [id])
+  batch          Batch?       @relation(fields: [batchId], references: [id])
+  user           User         @relation(fields: [movedBy], references: [id])
+
+  @@index([ingredientId])
+  @@index([batchId])
+  @@map("stock_movements")
+}
+
+model PurchaseOrder {
+  id            String              @id @default(uuid())
+  orgId         String              @map("org_id")
+  supplierId    String              @map("supplier_id")
+  poNumber      String              @unique @map("po_number")
+  status        PurchaseOrderStatus @default(DRAFT)
+  orderDate     DateTime            @map("order_date")
+  expectedDate  DateTime?           @map("expected_date")
+  receivedDate  DateTime?           @map("received_date")
+  totalAmount   Decimal?            @map("total_amount") @db.Decimal(10, 2)
+  currency      String              @default("GEL")
+  notes         String?
+  createdBy     String              @map("created_by")
+  createdAt     DateTime            @default(now()) @map("created_at")
+  updatedAt     DateTime            @updatedAt @map("updated_at")
+
+  organization  Organization      @relation(fields: [orgId], references: [id])
+  supplier      Supplier          @relation(fields: [supplierId], references: [id])
+  user          User              @relation(fields: [createdBy], references: [id])
+  items         PurchaseOrderItem[]
+
+  @@map("purchase_orders")
+}
+
+model PurchaseOrderItem {
+  id              String   @id @default(uuid())
+  purchaseOrderId String   @map("purchase_order_id")
+  ingredientId    String   @map("ingredient_id")
+  quantity        Decimal  @db.Decimal(10, 3)
+  unit            String
+  unitPrice       Decimal  @map("unit_price") @db.Decimal(10, 2)
+  totalPrice      Decimal  @map("total_price") @db.Decimal(10, 2)
+  receivedQty     Decimal? @map("received_qty") @db.Decimal(10, 3)
+  notes           String?
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  ingredient    Ingredient    @relation(fields: [ingredientId], references: [id])
+
+  @@map("purchase_order_items")
 }

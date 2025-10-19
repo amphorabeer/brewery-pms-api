@@ -11,6 +11,7 @@ import { QcModule } from './qc/qc.module';
 import { PackagingModule } from './packaging/packaging.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { SuppliersModule } from './suppliers/suppliers.module';
 
 @Module({
   imports: [
@@ -26,6 +27,8 @@ import { AppService } from './app.service';
     TanksModule,
     QcModule,
     PackagingModule,
+    SuppliersModule, // ← Add this
+
   ],
   controllers: [AppController],
   providers: [AppService],
