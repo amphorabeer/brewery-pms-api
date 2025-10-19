@@ -1,46 +1,46 @@
-import { IsString, IsEmail, IsOptional, IsBoolean } from 'class-validator';
+import { IsString, IsOptional, IsBoolean, IsEmail } from 'class-validator';
 
 export class CreateSupplierDto {
   @IsString()
   name: string;
 
-  @IsOptional()
   @IsString()
+  @IsOptional()
   contactPerson?: string;
 
-  @IsOptional()
   @IsEmail()
+  @IsOptional()
   email?: string;
 
-  @IsOptional()
   @IsString()
+  @IsOptional()
   phone?: string;
 
-  @IsOptional()
   @IsString()
+  @IsOptional()
   address?: string;
 
-  @IsOptional()
   @IsString()
+  @IsOptional()
   city?: string;
 
-  @IsOptional()
   @IsString()
+  @IsOptional()
   country?: string;
 
-  @IsOptional()
   @IsString()
+  @IsOptional()
   taxId?: string;
 
-  @IsOptional()
   @IsString()
+  @IsOptional()
   paymentTerms?: string;
 
-  @IsOptional()
   @IsString()
+  @IsOptional()
   notes?: string;
 
-  @IsOptional()
   @IsBoolean()
+  @IsOptional()
   isActive?: boolean;
 }

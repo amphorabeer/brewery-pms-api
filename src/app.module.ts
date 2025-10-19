@@ -12,6 +12,9 @@ import { PackagingModule } from './packaging/packaging.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { SuppliersModule } from './suppliers/suppliers.module';
+import { PurchaseOrdersModule } from './purchase-orders/purchase-orders.module';
+import { StockMovementsModule } from './stock-movements/stock-movements.module';
+import { InventoryModule } from './inventory/inventory.module';
 
 @Module({
   imports: [
@@ -28,6 +31,10 @@ import { SuppliersModule } from './suppliers/suppliers.module';
     QcModule,
     PackagingModule,
     SuppliersModule, // ← Add this
+    PurchaseOrdersModule, // 👈 Add this
+    StockMovementsModule, // 👈 Add this
+    InventoryModule, // 👈 Add this
+
 
   ],
   controllers: [AppController],
