@@ -2,16 +2,14 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
+
 import { RecipesModule } from './recipes/recipes.module';
 import { BatchesModule } from './batches/batches.module';
 import { LocationsModule } from './locations/locations.module';
 import { IngredientsModule } from './ingredients/ingredients.module';
-import { TanksModule } from './tanks/tanks.module';
-import { QcModule } from './qc/qc.module';
-import { PackagingModule } from './packaging/packaging.module';
 import { AppController } from './app.controller';
-import { AppService } from './app.service';
-
+import { TanksModule } from './tanks/tanks.module';
+import { QcModule } from './qc/qc.module'; 
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -22,12 +20,11 @@ import { AppService } from './app.service';
     RecipesModule,
     BatchesModule,
     LocationsModule,
+    QcModule,  // ← ADD THIS
     IngredientsModule,
-    TanksModule,
-    QcModule,
-    PackagingModule,
+    TanksModule, 
+
   ],
   controllers: [AppController],
-  providers: [AppService],
 })
 export class AppModule {}

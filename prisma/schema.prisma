@@ -37,6 +37,21 @@ enum QcTestResult {
   @@map("qc_test_result")
 }
 
+enum PackageType {
+  BOTTLE
+  KEG
+  CAN
+  GROWLER
+  CROWLER
+}
+
+enum PackagingStatus {
+  PLANNED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
 // ═══════════════════════════════════════════════════════════
 // MODELS
 // ═══════════════════════════════════════════════════════════
@@ -51,22 +66,23 @@ model Organization {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  users          User[]
-  locations      Location[]
-  subscriptions  Subscription[]
-  invoices       Invoice[]
-  recipes        Recipe[]
-  batches        Batch[]
-  kegs           Keg[]
-  rooms          Room[]
-  reservations   Reservation[]
-  guests         Guest[]
-  products       Product[]
-  inventory      InventoryItem[]
-  auditLogs      AuditLog[]
-  ingredients    Ingredient[]
-  tanks          Tank[]
-  qcTestTypes    QcTestType[]
+  users              User[]
+  locations          Location[]
+  subscriptions      Subscription[]
+  invoices           Invoice[]
+  recipes            Recipe[]
+  batches            Batch[]
+  kegs               Keg[]
+  rooms              Room[]
+  reservations       Reservation[]
+  guests             Guest[]
+  products           Product[]
+  inventory          InventoryItem[]
+  auditLogs          AuditLog[]
+  ingredients        Ingredient[]
+  tanks              Tank[]
+  qcTestTypes        QcTestType[]
+  packageFormats     PackageFormat[]
 
   @@map("organizations")
 }
@@ -87,13 +103,14 @@ model User {
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
-  organization       Organization        @relation(fields: [orgId], references: [id])
-  refreshTokens      RefreshToken[]
-  assignedTasks      HousekeepingTask[]
-  auditLogs          AuditLog[]
-  createdReservations Reservation[]      @relation("CreatedByUser")
-  batchStatusChanges BatchStatusHistory[]
-  qcTests            QcTest[]
+  organization         Organization         @relation(fields: [orgId], references: [id])
+  refreshTokens        RefreshToken[]
+  assignedTasks        HousekeepingTask[]
+  auditLogs            AuditLog[]
+  createdReservations  Reservation[]        @relation("CreatedByUser")
+  batchStatusChanges   BatchStatusHistory[]
+  qcTests              QcTest[]
+  packagingOperations  PackagingOperation[]
 
   @@map("users")
 }
@@ -319,14 +336,15 @@ model Batch {
   createdAt             DateTime    @default(now()) @map("created_at")
   updatedAt             DateTime    @updatedAt @map("updated_at")
 
-  organization     Organization         @relation(fields: [orgId], references: [id])
-  location         Location?            @relation(fields: [locationId], references: [id])
-  recipe           Recipe               @relation(fields: [recipeId], references: [id])
-  tank             Tank?                @relation("TankBatches", fields: [tankId], references: [id])
-  fermentationLogs FermentationLog[]
-  kegs             Keg[]
-  statusHistory    BatchStatusHistory[]
-  qcTests          QcTest[]
+  organization        Organization         @relation(fields: [orgId], references: [id])
+  location            Location?            @relation(fields: [locationId], references: [id])
+  recipe              Recipe               @relation(fields: [recipeId], references: [id])
+  tank                Tank?                @relation("TankBatches", fields: [tankId], references: [id])
+  fermentationLogs    FermentationLog[]
+  kegs                Keg[]
+  statusHistory       BatchStatusHistory[]
+  qcTests             QcTest[]
+  packagingOperations PackagingOperation[]
 
   @@map("batches")
 }
@@ -619,4 +637,44 @@ model QcTest {
 
   @@index([batchId])
   @@map("qc_tests")
+}
+
+model PackageFormat {
+  id          String      @id @default(uuid())
+  orgId       String      @map("org_id")
+  name        String      // e.g., "330ml Bottle", "50L Keg"
+  type        PackageType
+  size        Decimal     @db.Decimal(10, 2) // Size in liters or ml
+  unit        String      // "ml", "L"
+  description String?
+  isActive    Boolean     @default(true) @map("is_active")
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+
+  organization Organization         @relation(fields: [orgId], references: [id])
+  operations   PackagingOperation[]
+
+  @@map("package_formats")
+}
+
+model PackagingOperation {
+  id              String          @id @default(uuid())
+  batchId         String          @map("batch_id")
+  packageFormatId String          @map("package_format_id")
+  sku             String?         // Auto-generated SKU
+  quantity        Int             // Number of packages
+  volumePackaged  Decimal         @map("volume_packaged") @db.Decimal(10, 2) // Total volume in liters
+  packagedBy      String          @map("packaged_by") // User who performed operation
+  packagedAt      DateTime        @map("packaged_at")
+  status          PackagingStatus @default(COMPLETED)
+  notes           String?
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+
+  batch         Batch         @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  packageFormat PackageFormat @relation(fields: [packageFormatId], references: [id])
+  user          User          @relation(fields: [packagedBy], references: [id])
+
+  @@index([batchId])
+  @@map("packaging_operations")
 }
